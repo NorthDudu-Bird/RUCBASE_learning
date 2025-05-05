@@ -1,0 +1,32 @@
+{
+    //Use Intellisense to learn about possible attributes.
+    //Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid 830387
+    // /home/zgs/star/bench tpcc --loptostderr 1 --id 1 --servers "10.77.110.144:10215;10.77.110.145:10216;10.77.10.148:10217" --pr
+    "version":"0.2.0",
+    "configurations": [{
+        "name": "rucbase",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/build/bin/buffer_pool_manager_test", //bench ycsb",//需要执行的文件位 ycsb" test/workload cluster test//lru_replacer_test  disk_manager_test buffer_pool_manager_test
+        "args":[
+            "testdb"
+        ],// 输入的参数"_f"，"../../etc/observer.ini'"stopAtEntry": false,"cwd":"$workspaceFolder}/build/"，//当前运行的位置 //"cwd":"$workspaceFolder}",//
+        "stopAtConnect": false,
+        "cwd":"${workspaceFolder}/build/",//当前运行的位置 // "cwd": "${workspacefolder}",//
+        "environment":[],
+        // "terminal":"external",
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "miDebuggerArgs": "-q -ex quit; wait() { fg >/dev/null; }; /usr/bin/gdb -q --interpreter=mi",//解决异常问题
+        "setupCommands":[{
+        "text":"-enable-pretty-printing",
+        "description": "enable pretty printing",
+        "ignoreFailures": true
+        
+        }],
+        //"preLaunchTask":"bench tpcc"，//与tasks.json 的label项目同名
+        "targetArchitecture":"x86_64",
+        "miDebuggerPath":"/usr/bin/gdb"
+    }]
+}

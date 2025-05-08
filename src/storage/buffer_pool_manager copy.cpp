@@ -54,7 +54,7 @@ void BufferPoolManager::update_page(Page *page, PageId new_page_id, frame_id_t n
     // 3 重置page的data，更新page id
     if(page->is_dirty()) {
         disk_manager_->write_page(page->get_page_id().fd, page->get_page_id().page_no,page->get_data(),PAGE_SIZE);
-            page->is_dirty_ = false;
+        page->is_dirty_ = false;
     }
     page_table_.erase(page->get_page_id());
     page->id_ = new_page_id;

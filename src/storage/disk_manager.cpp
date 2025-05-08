@@ -9,7 +9,7 @@ MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 See the Mulan PSL v2 for more details. */
 
 #include "storage/disk_manager.h"
-
+#include<iostream>
 #include <assert.h>    // for assert
 #include <string.h>    // for memset
 #include <sys/stat.h>  // for stat
@@ -31,7 +31,9 @@ void DiskManager::write_page(int fd, page_id_t page_no, const char *offset, int 
     // 1.lseek()定位到文件头，通过(fd,page_no)可以定位指定页面及其在磁盘文件中的偏移量
     // 2.调用write()函数
     // 注意write返回值与num_bytes不等时 throw InternalError("DiskManager::write_page Error");
-
+    off_t offset_ = page_no * PAGE_SIZE;
+    if(lseek(fd,offset_,SEEK_SET)==-1) throw UnixError();
+    if(write(fd,offset,num_bytes) != num_bytes) throw InternalError("DiskManager::write_page Error");
 }
 
 /**
@@ -46,7 +48,11 @@ void DiskManager::read_page(int fd, page_id_t page_no, char *offset, int num_byt
     // 1.lseek()定位到文件头，通过(fd,page_no)可以定位指定页面及其在磁盘文件中的偏移量
     // 2.调用read()函数
     // 注意read返回值与num_bytes不等时，throw InternalError("DiskManager::read_page Error");
-
+    off_t offset_ = page_no * PAGE_SIZE;
+     if(lseek(fd,offset_,SEEK_SET)==-1) throw UnixError();
+    if(num_bytes != read(fd,offset,num_bytes)){
+        throw InternalError("DiskManager::read_page Error");
+    }
 }
 
 /**
@@ -62,7 +68,7 @@ page_id_t DiskManager::allocate_page(int fd) {
 
 void DiskManager::deallocate_page(__attribute__((unused)) page_id_t page_id) {}
 
-bool DiskManager::is_dir(const std::string& path) {
+bool DiskManager::is_dir(const std::string &path) {
     struct stat st;
     return stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode);
 }
@@ -84,7 +90,7 @@ void DiskManager::destroy_dir(const std::string &path) {
 
 /**
  * @description: 判断指定路径文件是否存在
- * @return {bool} 若指定路径文件存在则返回true 
+ * @return {bool} 若指定路径文件存在则返回true
  * @param {string} &path 指定路径文件
  */
 bool DiskManager::is_file(const std::string &path) {
@@ -102,6 +108,11 @@ void DiskManager::create_file(const std::string &path) {
     // Todo:
     // 调用open()函数，使用O_CREAT模式
     // 注意不能重复创建相同文件
+    if (is_file(path)) {
+        throw FileExistsError(path);
+    }
+    int fd = open(path.c_str(),O_CREAT);
+    close(fd);
 }
 
 /**
@@ -112,12 +123,19 @@ void DiskManager::destroy_file(const std::string &path) {
     // Todo:
     // 调用unlink()函数
     // 注意不能删除未关闭的文件
-    
+    if (!is_file(path)) {
+        throw FileNotFoundError(path);
+    }
+    if(path2fd_.count(path)) {
+        throw FileNotClosedError(path);
+    }
+    if(unlink(path.c_str()) == -1) {
+        throw UnixError();
+    }
 }
 
-
 /**
- * @description: 打开指定路径文件 
+ * @description: 打开指定路径文件
  * @return {int} 返回打开的文件的文件句柄
  * @param {string} &path 文件所在路径
  */
@@ -125,21 +143,44 @@ int DiskManager::open_file(const std::string &path) {
     // Todo:
     // 调用open()函数，使用O_RDWR模式
     // 注意不能重复打开相同文件，并且需要更新文件打开列表
-
+    // 检查文件是否已打开
+    if (!is_file(path)) {
+        throw FileNotFoundError(path);
+    }
+    if(path2fd_.count(path)) {
+        throw FileNotClosedError(path);
+    }
+    int fd = open(path.c_str(), O_RDWR);
+    if(fd == -1) {
+        throw UnixError();
+    }
+    path2fd_[path] = fd;//记录路径对应的fd
+    fd2path_[fd] = path;//记录fd对应的路径
+    // 初始化页面计数
+    set_fd2pageno(fd,0);
+    return fd;
 }
 
 /**
- * @description:用于关闭指定路径文件 
+ * @description:用于关闭指定路径文件
  * @param {int} fd 打开的文件的文件句柄
  */
 void DiskManager::close_file(int fd) {
     // Todo:
     // 调用close()函数
     // 注意不能关闭未打开的文件，并且需要更新文件打开列表
-
+    if (!fd2path_.count(fd)) { 
+        throw FileNotOpenError(fd); 
+    }
+    std::string path = fd2path_[fd];
+    if(close(fd)<0){
+        throw UnixError();
+    }
+    //清理文件状态记录 
+    path2fd_.erase(path); // 移除路径到fd的映射 
+    fd2path_.erase(fd); // 移除fd到路径的映射 
+    fd2pageno_[fd] = 0;// 重置页面计数器
 }
-
-
 /**
  * @description: 获得文件的大小
  * @return {int} 文件的大小
@@ -175,7 +216,6 @@ int DiskManager::get_file_fd(const std::string &file_name) {
     return path2fd_[file_name];
 }
 
-
 /**
  * @description:  读取日志文件内容
  * @return {int} 返回读取的数据量，若为-1说明读取数据的起始位置超过了文件大小
@@ -194,13 +234,12 @@ int DiskManager::read_log(char *log_data, int size, int offset) {
     }
 
     size = std::min(size, file_size - offset);
-    if(size == 0) return 0;
+    if (size == 0) return 0;
     lseek(log_fd_, offset, SEEK_SET);
     ssize_t bytes_read = read(log_fd_, log_data, size);
     assert(bytes_read == size);
     return bytes_read;
 }
-
 
 /**
  * @description: 写日志内容

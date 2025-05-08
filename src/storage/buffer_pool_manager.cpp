@@ -21,6 +21,7 @@ bool BufferPoolManager::find_victim_page(frame_id_t* frame_id) {
     // 1.1 未满获得frame
     // 1.2 已满使用lru_replacer中的方法选择淘汰页面
 
+
     // free_list_为空则缓冲池已满
     if(!free_list_.empty()) {
         *frame_id = free_list_.front();

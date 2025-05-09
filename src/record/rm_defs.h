@@ -21,9 +21,9 @@ constexpr int RM_MAX_RECORD_SIZE = 512;
 /* 文件头，记录表数据文件的元信息，写入磁盘中文件的第0号页面 */
 struct RmFileHdr {
     int record_size;            // 表中每条记录的大小，由于不包含变长字段，因此当前字段初始化后保持不变
-    int num_pages;              // 文件中分配的页面个数（初始化为1）
-    int num_records_per_page;   // 每个页面最多能存储的元组个数
-    int first_free_page_no;     // 文件中当前第一个包含空闲空间的页面号（初始化为-1）
+    int num_pages;              // 文件中分配的页面个数（初始化为1）//
+    int num_records_per_page;   // 每个页面最多能存储的元组个数 
+    int first_free_page_no;     // 文件中当前第一个包含空闲空间的页面号（初始化为-1）//
     int bitmap_size;            // 每个页面bitmap大小
 };
 

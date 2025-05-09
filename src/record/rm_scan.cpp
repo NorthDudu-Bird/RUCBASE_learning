@@ -41,7 +41,7 @@ void RmScan::next() {
     int max_rec = file_handle_->file_hdr_.num_records_per_page;
     int max_page = file_handle_->file_hdr_.num_pages;
     RmPageHandle page_handle = file_handle_->fetch_page_handle(rid_.page_no);
-    rid_.slot_no = Bitmap::first_bit(1,page_handle.bitmap,rid_.slot_no);
+    rid_.slot_no = Bitmap::next_bit(1,page_handle.bitmap,max_rec,rid_.slot_no);
 
     while(rid_.slot_no == max_rec){
         rid_.page_no++;

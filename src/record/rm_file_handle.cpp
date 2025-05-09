@@ -30,8 +30,9 @@ std::unique_ptr<RmRecord> RmFileHandle::get_record(const Rid& rid, Context* cont
     //1
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
     //2
-    std::unique_ptr<RmRecord> record_ptr = std::make_unique<RmRecord>(file_hdr_.record_size,page_handle.get_slot(rid.slot_no));
-    return record_ptr;
+    //std::unique_ptr<RmRecord> record_ptr = std::make_unique<RmRecord>(file_hdr_.record_size,page_handle.get_slot(rid.slot_no));
+    //return record_ptr;
+    return std::make_unique<RmRecord>(file_hdr_.record_size,page_handle.get_slot(rid.slot_no));
 }
 
 /**
@@ -97,7 +98,7 @@ void RmFileHandle::delete_record(const Rid& rid, Context* context) {
     // 注意考虑删除一条记录后页面未满的情况，需要调用release_page_handle()
 
     //0.加行锁
-    context->lock_mgr_->lock_IS_on_table(context->txn_,fd_);
+    context->lock_mgr_->lock_IX_on_table(context->txn_,fd_);
     context->lock_mgr_->lock_exclusive_on_record(context->txn_,rid,fd_);
     //1
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
@@ -148,12 +149,11 @@ RmPageHandle RmFileHandle::fetch_page_handle(int page_no) const {
     PageId page_id;
     page_id.fd = fd_;
     page_id.page_no = page_no;
-    Page* fet_page = buffer_pool_manager_->fetch_page(page_id);
-    RmPageHandle page_handle = RmPageHandle(&file_hdr_, fet_page);
-
     if(page_no == INVALID_PAGE_ID){
         throw PageNotExistError("PageName||",page_no);//待解决
     }
+    Page* fet_page = buffer_pool_manager_->fetch_page(page_id);
+    RmPageHandle page_handle = RmPageHandle(&file_hdr_, fet_page);
 
     return page_handle;
 }

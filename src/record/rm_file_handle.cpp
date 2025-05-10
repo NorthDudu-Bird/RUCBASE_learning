@@ -103,13 +103,33 @@ void RmFileHandle::delete_record(const Rid& rid, Context* context) {
     //1
     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
     //2
-    page_handle.page_hdr->num_records--;
     Bitmap::reset(page_handle.bitmap,rid.slot_no);
     //3
-    if(page_handle.page_hdr->num_records < file_hdr_.num_records_per_page){
+    if(page_handle.page_hdr->num_records == file_hdr_.num_records_per_page){
         release_page_handle(page_handle);
     }
+    page_handle.page_hdr->num_records--;//必须采用预判断的方式，虽然和下面被注释的逻辑一样但是test会报错
 }
+
+// void RmFileHandle::delete_record(const Rid& rid, Context* context) {
+//     // Todo:
+//     // 1. 获取指定记录所在的page handle
+//     // 2. 更新page_handle.page_hdr中的数据结构
+//     // 注意考虑删除一条记录后页面未满的情况，需要调用release_page_handle()
+
+//     //0.加行锁
+//     context->lock_mgr_->lock_IX_on_table(context->txn_,fd_);
+//     context->lock_mgr_->lock_exclusive_on_record(context->txn_,rid,fd_);
+//     //1
+//     RmPageHandle page_handle = fetch_page_handle(rid.page_no);
+//     //2
+//     page_handle.page_hdr->num_records--;
+//     Bitmap::reset(page_handle.bitmap,rid.slot_no);
+//     //3
+//     if(page_handle.page_hdr->num_records < file_hdr_.num_records_per_page){
+//         release_page_handle(page_handle);
+//     }
+// }
 
 
 /**

@@ -35,6 +35,7 @@ void DiskManager::write_page(int fd, page_id_t page_no, const char *offset, int 
     if (bytes_written != num_bytes) {
         throw InternalError("DiskManager::write_page Error");
     }
+    return;
 }
 
 /**
@@ -148,18 +149,16 @@ int DiskManager::open_file(const std::string &path) {
     // Todo:
     // 调用open()函数，使用O_RDWR模式
     // 注意不能重复打开相同文件，并且需要更新文件打开列表
-   auto found = path2fd_.find(path);
     if(!is_file(path)){
         throw FileNotFoundError(path);
     }
-    else if(found != path2fd_.end()){
-        // file open already
+    if (path2fd_.count(path)) {
         throw FileNotClosedError(path);
     }
-    int ret = open(path.c_str(),O_RDWR);
-    path2fd_[path] = ret;
-    fd2path_[ret]  = path;
-    return ret;
+    int fd = open(path.c_str(),O_RDWR);
+    path2fd_[path] = fd;
+    fd2path_[fd]  = path;
+    return fd;
 }
 
 /**
